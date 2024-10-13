@@ -26,7 +26,7 @@ def normalize_image(image_data):
     return normalized_data
 
 # Função para processar uma única imagem
-def process_image(img_path, template, mask):
+def process_image(img_path, template, mask, crop_margin=(10, 10, 10)):
     try:
         #logger.info(f"Iniciando o processamento da imagem: {img_path}")
         image = ants.image_read(img_path)
@@ -63,8 +63,24 @@ def process_image(img_path, template, mask):
         normalized_data = normalize_image(brain_masked.numpy())
         normalized_image = ants.from_numpy(normalized_data, origin=brain_masked.origin, spacing=brain_masked.spacing, direction=brain_masked.direction)
 
-        logger.info(f"Imagem {img_path} processada com sucesso.")
-        return normalized_image
+        # -------- Crop the edges (remove border pixels) ---------
+        # Definindo a margem de corte para cada dimensão (x, y, z)
+        margin_x, margin_y, margin_z = crop_margin
+
+        # Pegando as dimensões da imagem
+        cropped_data = normalized_image.numpy()[
+            margin_x:-margin_x,  # Corta a borda em X
+            margin_y:-margin_y,  # Corta a borda em Y
+            margin_z:-margin_z   # Corta a borda em Z
+        ]
+
+        # Criar nova imagem ANTs a partir da imagem cortada
+        cropped_image = ants.from_numpy(cropped_data, origin=normalized_image.origin, spacing=normalized_image.spacing, direction=normalized_image.direction)
+
+        # Log e retorno
+        logger.info(f"Imagem {img_path} processada e cortada com sucesso.")
+        return cropped_image
+        
 
     except Exception as e:
         logger.error(f"Erro ao processar a imagem {img_path}: {e}")
